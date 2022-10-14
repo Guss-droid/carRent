@@ -1,56 +1,42 @@
-import multer from "multer";
 import { Router } from "express";
 
-import { CategoriesServices } from "./services/CategoriesServices";
-import { CategoriesRepository } from "./repositories/CategoriesRepository";
-
-import { SpecificationsServices } from "./services/SpecificationsServices";
-import { SpecificationsRepository } from "./repositories/SpecificationsRepository";
+import { CreateCategoryController } from "./modules/cart/useCases/createCategory/CategoryController";
+import { ListCategoriesController } from "./modules/cart/useCases/listCategories/ListCategoriesController";
+import { ListSpecificationController } from "./modules/cart/useCases/listSpecifications/ListSpecificationsController";
+import { CreateSpecificationController } from "./modules/cart/useCases/createSpecification/CreateSpecificationController";
+import { CreateUserController } from "./modules/client/useCases/createUser/CreateUserController";
+import { AuthenticateUserController } from "./modules/client/useCases/authenticateUser/AuthenticateUserController";
+import { ensureAuthenticated } from "./middlewares/ensureAuthenticated";
+import { UpdateUserAvatarController } from "./modules/client/useCases/updateUserAvatar/UpdateUserAvatarController";
+import multer from "multer";
+import uploadConfig from "./config/upload";
 
 export const routes = Router();
-const upload = multer({ dest: "./tmp" });
 
-const categoriesRepository = new CategoriesRepository();
-const specificationsRepository = new SpecificationsRepository();
+const createCategoryController = new CreateCategoryController();
+const createSpecificationController = new CreateSpecificationController();
+const listCategoriesController = new ListCategoriesController();
+const listSpecificationsController = new ListSpecificationController();
+const createUsersController = new CreateUserController();
+const authenticateUserController = new AuthenticateUserController();
+const updateUserAvatarController = new UpdateUserAvatarController();
 
-routes.post("/categories", (req, res) => {
-  const { name, description } = req.body;
+const uploadAvatar = multer(uploadConfig.upload("./tmp/images"))
 
-  const categoriesServices = new CategoriesServices(categoriesRepository);
+// Categories
+routes.post("/categories", ensureAuthenticated, createCategoryController.handle);
+routes.get("/categories", ensureAuthenticated, listCategoriesController.handle);
 
-  categoriesServices.createCategoryService({ name, description });
+//Specifications
+routes.post("/specifications", ensureAuthenticated, createSpecificationController.handle);
+routes.get("/specifications", ensureAuthenticated, listSpecificationsController.handle);
 
-  return res.status(201).send();
-});
+//Users
+routes.post("/users", createUsersController.handle);
+routes.patch("/avatar",
+  ensureAuthenticated,
+  uploadAvatar.single("avatar"),
+  updateUserAvatarController.handle)
 
-routes.get("/categories", (req, res) => {
-  const list = categoriesRepository.list();
-
-  return res.status(200).json({ list });
-});
-
-routes.post("/import", upload.single("file"), (req, res) => {
-  const { file } = req;
-
-  const categoryService = new CategoriesServices(categoriesRepository);
-
-  categoryService.importCategoryService(file);
-
-  return res.status(200).send();
-});
-
-routes.post("/specifications", (req, res) => {
-  const { name, description } = req.body;
-
-  const specificationsService = new SpecificationsServices(specificationsRepository);
-
-  specificationsService.createSpecificationServices({ name, description });
-
-  return res.status(201).send();
-});
-
-routes.get("/specifications", (req, res) => {
-  const list = specificationsRepository.list();
-
-  return res.status(200).json({ list });
-});
+//Autenticação
+routes.post("/login", authenticateUserController.handle)
